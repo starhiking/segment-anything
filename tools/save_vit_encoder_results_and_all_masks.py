@@ -4,6 +4,8 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+# Depoly based on amg.py, this tool will generate mask and save encoding features for all images in a folder 
+
 import cv2  # type: ignore
 
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
@@ -11,6 +13,7 @@ from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 import argparse
 import json
 import os
+import numpy as np
 from typing import Any, Dict, List
 
 parser = argparse.ArgumentParser(
@@ -152,10 +155,11 @@ amg_settings.add_argument(
 def write_masks_to_folder(masks: List[Dict[str, Any]], path: str) -> None:
     header = "id,area,bbox_x0,bbox_y0,bbox_w,bbox_h,point_input_x,point_input_y,predicted_iou,stability_score,crop_box_x0,crop_box_y0,crop_box_w,crop_box_h"  # noqa
     metadata = [header]
+    os.makedirs(os.path.join(path, "mask"), exist_ok=True)
     for i, mask_data in enumerate(masks):
         mask = mask_data["segmentation"]
         filename = f"{i}.png"
-        cv2.imwrite(os.path.join(path, filename), mask * 255)
+        cv2.imwrite(os.path.join(path, "mask" ,filename), mask * 255)
         mask_metadata = [
             str(i),
             str(mask_data["area"]),
@@ -170,6 +174,19 @@ def write_masks_to_folder(masks: List[Dict[str, Any]], path: str) -> None:
     metadata_path = os.path.join(path, "metadata.csv")
     with open(metadata_path, "w") as f:
         f.write("\n".join(metadata))
+
+    return
+
+
+def write_embeddings_to_folder(img_embeddings: List[Dict[str, Any]], path: str) -> None:
+    if len(img_embeddings) > 1:
+        print(f"Warning: more than one img embedding was generated in {path}.")
+
+    os.makedirs(os.path.join(path, "img_embedding"), exist_ok=True)
+    for i, embedding_data in enumerate(img_embeddings):
+        embedding = embedding_data.detach().cpu().numpy()
+        filename = f"{i}.npy"
+        np.save(os.path.join(path, "img_embedding", filename), embedding)
 
     return
 
@@ -218,14 +235,15 @@ def main(args: argparse.Namespace) -> None:
             continue
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        masks, _ = generator.generate(image)
+        masks, img_embeddings = generator.generate(image)
 
         base = os.path.basename(t)
         base = os.path.splitext(base)[0]
         save_base = os.path.join(args.output, base)
         if output_mode == "binary_mask":
-            os.makedirs(save_base, exist_ok=False)
+            os.makedirs(save_base, exist_ok=True)
             write_masks_to_folder(masks, save_base)
+            write_embeddings_to_folder(img_embeddings, save_base)
         else:
             save_file = save_base + ".json"
             with open(save_file, "w") as f:

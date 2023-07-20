@@ -160,7 +160,7 @@ class SamAutomaticMaskGenerator:
         """
 
         # Generate masks
-        mask_data = self._generate_masks(image)
+        mask_data, img_embeddings = self._generate_masks(image)
 
         # Filter small disconnected regions and holes in masks
         if self.min_mask_region_area > 0:
@@ -192,7 +192,7 @@ class SamAutomaticMaskGenerator:
             }
             curr_anns.append(ann)
 
-        return curr_anns
+        return curr_anns, img_embeddings
 
     def _generate_masks(self, image: np.ndarray) -> MaskData:
         orig_size = image.shape[:2]
@@ -202,9 +202,11 @@ class SamAutomaticMaskGenerator:
 
         # Iterate over image crops
         data = MaskData()
+        img_embeddings = []
         for crop_box, layer_idx in zip(crop_boxes, layer_idxs):
-            crop_data = self._process_crop(image, crop_box, layer_idx, orig_size)
+            crop_data, crop_img_embedding = self._process_crop(image, crop_box, layer_idx, orig_size)
             data.cat(crop_data)
+            img_embeddings.append(crop_img_embedding)
 
         # Remove duplicate masks between crops
         if len(crop_boxes) > 1:
@@ -220,7 +222,8 @@ class SamAutomaticMaskGenerator:
             data.filter(keep_by_nms)
 
         data.to_numpy()
-        return data
+        
+        return data, img_embeddings
 
     def _process_crop(
         self,
@@ -234,6 +237,7 @@ class SamAutomaticMaskGenerator:
         cropped_im = image[y0:y1, x0:x1, :]
         cropped_im_size = cropped_im.shape[:2]
         self.predictor.set_image(cropped_im)
+        img_embeddings = self.predictor.features.clone()
 
         # Get points for this crop
         points_scale = np.array(cropped_im_size)[None, ::-1]
@@ -261,7 +265,7 @@ class SamAutomaticMaskGenerator:
         data["points"] = uncrop_points(data["points"], crop_box)
         data["crop_boxes"] = torch.tensor([crop_box for _ in range(len(data["rles"]))])
 
-        return data
+        return data, img_embeddings
 
     def _process_batch(
         self,
