@@ -15,10 +15,6 @@ def create_logger():
     log_file = f"foodseg_wh_warning.log"
     final_log_file = os.path.join("tools", log_file)
 
-    # if os.path.exists(final_log_file):
-    #     print("Current log file is exist")
-    #     raise ValueError("Log file alread exist")
-
     logging.basicConfig(
         format=
         '[%(asctime)s] [%(filename)s:%(lineno)d] [%(levelname)s] %(message)s',

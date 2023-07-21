@@ -15,6 +15,7 @@ import json
 import os
 import numpy as np
 from typing import Any, Dict, List
+import shutil, logging, torch
 
 parser = argparse.ArgumentParser(
     description=(
@@ -151,15 +152,33 @@ amg_settings.add_argument(
     ),
 )
 
+def write_visualization_to_folder(masks, path, img_RGB):
+    np.random.seed(42)
+    if len(masks) == 0:
+        return
+    sorted_masks = sorted(masks, key=(lambda x: x['area']), reverse=True) # True is descending order, False is ascending order
+    h, w = masks[0]['segmentation'].shape[:2]
+    result = np.zeros((h, w, 3), dtype=np.uint8) 
+
+    for mask in sorted_masks:
+        m = mask['segmentation']
+        color = np.random.randint(0,255, (3,))
+        result[m, :] = color
+
+    vis_RGB = cv2.addWeighted(img_RGB, 0.5, result, 0.5, 0) 
+    vis_BGR = cv2.cvtColor(vis_RGB, cv2.COLOR_RGB2BGR)
+    vis_path = os.path.join(path, "sam_vis.png")
+    cv2.imwrite(vis_path, vis_BGR)
+    return
 
 def write_masks_to_folder(masks: List[Dict[str, Any]], path: str) -> None:
     header = "id,area,bbox_x0,bbox_y0,bbox_w,bbox_h,point_input_x,point_input_y,predicted_iou,stability_score,crop_box_x0,crop_box_y0,crop_box_w,crop_box_h"  # noqa
     metadata = [header]
-    os.makedirs(os.path.join(path, "mask"), exist_ok=True)
+    os.makedirs(os.path.join(path, "sam_mask"), exist_ok=True)
     for i, mask_data in enumerate(masks):
         mask = mask_data["segmentation"]
         filename = f"{i}.png"
-        cv2.imwrite(os.path.join(path, "mask" ,filename), mask * 255)
+        cv2.imwrite(os.path.join(path, "sam_mask" ,filename), mask * 255)
         mask_metadata = [
             str(i),
             str(mask_data["area"]),
@@ -171,7 +190,7 @@ def write_masks_to_folder(masks: List[Dict[str, Any]], path: str) -> None:
         ]
         row = ",".join(mask_metadata)
         metadata.append(row)
-    metadata_path = os.path.join(path, "metadata.csv")
+    metadata_path = os.path.join(path, "sam_metadata.csv")
     with open(metadata_path, "w") as f:
         f.write("\n".join(metadata))
 
@@ -209,8 +228,28 @@ def get_amg_kwargs(args):
     return amg_kwargs
 
 
+def create_logger(save_folder):
+    
+    log_file = f"sam_process.log"
+    final_log_file = os.path.join(save_folder, log_file)
+
+    logging.basicConfig(
+        format=
+        '[%(asctime)s] [%(filename)s:%(lineno)d] [%(levelname)s] %(message)s',
+        level=logging.INFO,
+        handlers=[
+            logging.FileHandler(final_log_file, mode='w'),
+            logging.StreamHandler()
+        ])                        
+    logger = logging.getLogger()
+    print(f"Create Logger success in {final_log_file}")
+    return logger
+
 def main(args: argparse.Namespace) -> None:
-    print("Loading model...")
+    os.makedirs(args.output, exist_ok=True)
+    logger = create_logger(args.output)
+
+    logger.info("Loading model...")
     sam = sam_model_registry[args.model_type](checkpoint=args.checkpoint)
     _ = sam.to(device=args.device)
     output_mode = "coco_rle" if args.convert_to_rle else "binary_mask"
@@ -225,13 +264,11 @@ def main(args: argparse.Namespace) -> None:
         ]
         targets = [os.path.join(args.input, f) for f in targets]
 
-    os.makedirs(args.output, exist_ok=True)
-
     for t in targets:
-        print(f"Processing '{t}'...")
+        logger.info(f"Processing '{t}'...")
         image = cv2.imread(t)
         if image is None:
-            print(f"Could not load '{t}' as an image, skipping...")
+            logger.error(f"Could not load '{t}' as an image, skipping...")
             continue
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
@@ -244,11 +281,13 @@ def main(args: argparse.Namespace) -> None:
             os.makedirs(save_base, exist_ok=True)
             write_masks_to_folder(masks, save_base)
             write_embeddings_to_folder(img_embeddings, save_base)
+            write_visualization_to_folder(masks, save_base, image)
+            shutil.copyfile(t, os.path.join(save_base, "input.jpg"))
         else:
             save_file = save_base + ".json"
             with open(save_file, "w") as f:
                 json.dump(masks, f)
-    print("Done!")
+    logger.info("Done!")
 
 
 if __name__ == "__main__":

@@ -45,3 +45,5 @@ dataset
 output/
 *.png
 *.jpg
+ckpts
+new_dataset/
