@@ -3,8 +3,11 @@ import os
 
 # python tools/save_vit_encoder_results_and_all_masks.py --input dataset/FoodSeg103/Images/img_dir/test --output new_dataset/FoodSeg103/test --model-type vit_h --checkpoint ckpts/sam_vit_h_4b8939.pth 
 
-inputs = ["dataset/FoodSeg103/Images/img_dir/test", "dataset/FoodSeg103/Images/img_dir/train", "dataset/UECFOODPIXCOMPLETE/data/UECFoodPIXCOMPLETE/test/img", "dataset/UECFOODPIXCOMPLETE/data/UECFoodPIXCOMPLETE/train/img"]
-outputs = ["new_dataset/FoodSeg103/test", "new_dataset/FoodSeg103/train", "new_dataset/UECFOODPIXCOMPLETE/test", "new_dataset/UECFOODPIXCOMPLETE/train"]
+input_root_dir = "dataset"
+output_root_dir = "new_dataset"
+
+inputs = [f"{input_root_dir}/FoodSeg103/Images/img_dir/test", f"{input_root_dir}/FoodSeg103/Images/img_dir/train", f"{input_root_dir}/UECFOODPIXCOMPLETE/data/UECFoodPIXCOMPLETE/test/img", f"{input_root_dir}/UECFOODPIXCOMPLETE/data/UECFoodPIXCOMPLETE/train/img"]
+outputs = [f"{output_root_dir}/FoodSeg103/test", f"{output_root_dir}/FoodSeg103/train", f"{output_root_dir}/UECFOODPIXCOMPLETE/test", f"{output_root_dir}/UECFOODPIXCOMPLETE/train"]
 
 CUDA_IDs = [0,1]
 
