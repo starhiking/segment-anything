@@ -175,8 +175,10 @@ def write_masks_to_folder(masks: List[Dict[str, Any]], path: str) -> None:
     header = "id,area,bbox_x0,bbox_y0,bbox_w,bbox_h,point_input_x,point_input_y,predicted_iou,stability_score,crop_box_x0,crop_box_y0,crop_box_w,crop_box_h"  # noqa
     metadata = [header]
     os.makedirs(os.path.join(path, "sam_mask"), exist_ok=True)
+    masks_array = []
     for i, mask_data in enumerate(masks):
         mask = mask_data["segmentation"]
+        masks_array.append(mask.copy())
         filename = f"{i}.png"
         cv2.imwrite(os.path.join(path, "sam_mask" ,filename), mask * 255)
         mask_metadata = [
@@ -190,6 +192,9 @@ def write_masks_to_folder(masks: List[Dict[str, Any]], path: str) -> None:
         ]
         row = ",".join(mask_metadata)
         metadata.append(row)
+
+    masks_array = np.stack(masks_array, axis=0)
+    np.save(os.path.join(path, "sam_mask" ,"masks.npy"), masks_array)
     metadata_path = os.path.join(path, "sam_metadata.csv")
     with open(metadata_path, "w") as f:
         f.write("\n".join(metadata))
