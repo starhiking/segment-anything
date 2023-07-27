@@ -25,7 +25,8 @@ def create_logger():
 def calculate_single_image_masks_label(mask_file, pred_mask_file, logger, category_list, new_mask_label_file_name):
     """
         每个子文件夹保存一种，注意命名，不然会覆盖
-        保存的格式： mask_index, category_id, category_name, category_count
+        保存的格式： mask_index, category_id, category_name, category_count, mask_count
+                    mask名字， 分类id， 分类名字，分类在那个有效mask中的占比， 有效mask在整张图中的占比
     """
     sam_mask_data = np.load(mask_file)
     pred_mask_img = cv2.imread(pred_mask_file)[:,:,-1] # red channel

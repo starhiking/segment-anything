@@ -47,3 +47,4 @@ output/
 *.jpg
 ckpts
 new_dataset/
+SAM_FOODSEG_NPY_NEW_DATASET_V2
