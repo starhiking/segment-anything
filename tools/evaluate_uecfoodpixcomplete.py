@@ -161,8 +161,8 @@ if __name__ == '__main__':
     
     gt_mask_name = "gt_mask.png"
     pred_mask_name = "pred_mask.png"
-    folder_path = "SAM_FOODSEG_NPY_NEW_DATASET_V2/FoodSeg103/test"
-    class_nums = 104 # UEC :103, Foodseg103: 104
+    folder_path = "SAM_FOODSEG_NPY_NEW_DATASET_V2/UECFOODPIXCOMPLETE/test"
+    class_nums = 103
 
     file_ids = os.listdir(folder_path)
     file_ids = [x for x in file_ids if os.path.exists(os.path.join(folder_path,x,gt_mask_name) ) and os.path.exists(os.path.join(folder_path, x, pred_mask_name))]
